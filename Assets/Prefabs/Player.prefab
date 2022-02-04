@@ -119,9 +119,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ba8b435a8dc3f604e9a13c4acd7081c2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_speed: 4
-  m_jumpForce: 4
-  m2_animator: {fileID: 8656458132974491863}
+  speed: 4
+  jumpForce: 5
+  lightAnimator: {fileID: 8656458132974491863}
+  darkSprite: {fileID: 3394498932243395175}
+  lightSprite: {fileID: 8899481330878893993}
 --- !u!95 &3223677048198687065
 Animator:
   serializedVersion: 3

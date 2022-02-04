@@ -3,39 +3,55 @@ using System.Collections;
 
 public class Player : MonoBehaviour {
 
-    [SerializeField] float      m_speed = 4.0f;
-    [SerializeField] float      m_jumpForce = 7.5f;
+    [SerializeField] float      speed = 4.0f;
+    [SerializeField] float      jumpForce = 7.5f;
 
-    private Animator            m_animator;
-    [SerializeField] private Animator            m2_animator;
-    private Rigidbody2D         m_body2d;
-    private Sensor_Player       m_groundSensor;
-    private bool                m_grounded = false;
-    private bool                m_combatIdle = false;
-    private bool                m_isDead = false;
+    private Animator            darkAnimator;
+    [SerializeField] private Animator            lightAnimator;
+    [SerializeField] private SpriteRenderer      darkSprite;
+    [SerializeField] private SpriteRenderer      lightSprite;
+    private Rigidbody2D         body2d;
+    private Sensor_Player       groundSensor;
+    private bool                grounded = false;
+    private bool                combatIdle = false;
+    private bool                isDead = false;
+    private int                 health;
+    private int                 startingHealth;
+    private int                 happiness;
+    private int                 totalHappiness;
 
-    // Use this for initialization
-    void Start () {
-        m_animator = GetComponent<Animator>();
-        m_body2d = GetComponent<Rigidbody2D>();
-        m_groundSensor = transform.Find("GroundSensor").GetComponent<Sensor_Player>();
+	private void Awake() {
+        Game.Instance.Player = this;
+	}
+
+	// Use this for initialization
+	void Start () {
+        darkAnimator = GetComponent<Animator>();
+        body2d = GetComponent<Rigidbody2D>();
+        groundSensor = transform.Find("GroundSensor").GetComponent<Sensor_Player>();
+
+        health = startingHealth;
+        totalHappiness = FindObjectsOfType<Happiness>().Length;
+
+        SpriteRendererAlpha(lightSprite, happiness / totalHappiness);
+        SpriteRendererAlpha(darkSprite, 1 - (happiness / totalHappiness));
     }
 	
 	// Update is called once per frame
 	void Update () {
         //Check if character just landed on the ground
-        if (!m_grounded && m_groundSensor.State()) {
-            m_grounded = true;
-            m_animator.SetBool("Grounded", m_grounded);
-            m2_animator.SetBool("Grounded", m_grounded);
+        if (!grounded && groundSensor.State()) {
+            grounded = true;
+            darkAnimator.SetBool("Grounded", grounded);
+            lightAnimator.SetBool("Grounded", grounded);
 
         }
 
         //Check if character just started falling
-        if(m_grounded && !m_groundSensor.State()) {
-            m_grounded = false;
-            m_animator.SetBool("Grounded", m_grounded);
-            m2_animator.SetBool("Grounded", m_grounded);
+        if(grounded && !groundSensor.State()) {
+            grounded = false;
+            darkAnimator.SetBool("Grounded", grounded);
+            lightAnimator.SetBool("Grounded", grounded);
         }
 
         // -- Handle input and movement --
@@ -48,24 +64,24 @@ public class Player : MonoBehaviour {
             transform.localScale = new Vector3(1.0f, 1.0f, 1.0f);
 
         // Move
-        m_body2d.velocity = new Vector2(inputX * m_speed, m_body2d.velocity.y);
+        body2d.velocity = new Vector2(inputX * speed, body2d.velocity.y);
 
         //Set AirSpeed in animator
-        m_animator.SetFloat("AirSpeed", m_body2d.velocity.y);
-        m2_animator.SetFloat("AirSpeed", m_body2d.velocity.y);
+        darkAnimator.SetFloat("AirSpeed", body2d.velocity.y);
+        lightAnimator.SetFloat("AirSpeed", body2d.velocity.y);
 
         // -- Handle Animations --
         //Death
         if (Input.GetKeyDown("e")) {
-            if (!m_isDead) {
-                m_animator.SetTrigger("Death");
-                m2_animator.SetTrigger("Death");
+            if (!isDead) {
+                darkAnimator.SetTrigger("Death");
+                lightAnimator.SetTrigger("Death");
             } else {
-                m_animator.SetTrigger("Recover");
-                m2_animator.SetTrigger("Recover");
+                darkAnimator.SetTrigger("Recover");
+                lightAnimator.SetTrigger("Recover");
             }
 
-            m_isDead = !m_isDead;
+            isDead = !isDead;
         }
 
         /*//Hurt
@@ -82,32 +98,50 @@ public class Player : MonoBehaviour {
             m_combatIdle = !m_combatIdle;*/
 
         //Jump
-        else if (Input.GetKeyDown("space") && m_grounded) {
-            m_animator.SetTrigger("Jump");
-            m2_animator.SetTrigger("Jump");
-            m_grounded = false;
-            m_animator.SetBool("Grounded", m_grounded);
-            m2_animator.SetBool("Grounded", m_grounded);
-            m_body2d.velocity = new Vector2(m_body2d.velocity.x, m_jumpForce);
-            m_groundSensor.Disable(0.2f);
+        else if (Input.GetKeyDown("space") && grounded) {
+            darkAnimator.SetTrigger("Jump");
+            lightAnimator.SetTrigger("Jump");
+            grounded = false;
+            darkAnimator.SetBool("Grounded", grounded);
+            lightAnimator.SetBool("Grounded", grounded);
+            body2d.velocity = new Vector2(body2d.velocity.x, jumpForce);
+            groundSensor.Disable(0.2f);
         }
 
         //Run
         else if (Mathf.Abs(inputX) > Mathf.Epsilon) {
-            m_animator.SetInteger("AnimState", 2);
-            m2_animator.SetInteger("AnimState", 2);
+            darkAnimator.SetInteger("AnimState", 2);
+            lightAnimator.SetInteger("AnimState", 2);
         }
 
         //Combat Idle
-        else if (m_combatIdle) {
-            m_animator.SetInteger("AnimState", 1);
-            m2_animator.SetInteger("AnimState", 1);
+        else if (combatIdle) {
+            darkAnimator.SetInteger("AnimState", 1);
+            lightAnimator.SetInteger("AnimState", 1);
         }
 
         //Idle
         else {
-            m_animator.SetInteger("AnimState", 0);
-            m2_animator.SetInteger("AnimState", 0);
+            darkAnimator.SetInteger("AnimState", 0);
+            lightAnimator.SetInteger("AnimState", 0);
         }
+    }
+
+    public void UpdateHealth(int _delta) {
+        health += _delta;        
+	}
+
+    public void IncrementHappiness() {
+        happiness++;
+
+        SpriteRendererAlpha(lightSprite, happiness / (float)totalHappiness);
+        SpriteRendererAlpha(darkSprite, 1 - (happiness / (float)totalHappiness));
+
+	}
+
+    private void SpriteRendererAlpha(SpriteRenderer _renderer, float _alpha) {
+        Color tmp = _renderer.color;
+        tmp.a = _alpha;
+        _renderer.color = tmp;
     }
 }
